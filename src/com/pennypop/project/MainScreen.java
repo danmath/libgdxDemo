@@ -206,7 +206,7 @@ public class MainScreen implements Screen {
 			@Override
 			public void handleHttpResponse(HttpResponse httpResponse) {
 				parsedWeatherResponse = Utility.HttpResponseReader(httpResponse);
-				System.out.println("response: " + parsedWeatherResponse.get("weather"));
+				//System.out.println("response: " + parsedWeatherResponse.get("weather"));
 			}
 			
 			@Override

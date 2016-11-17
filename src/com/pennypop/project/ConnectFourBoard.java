@@ -1,5 +1,8 @@
 package com.pennypop.project;
 
+import java.awt.Point;
+import java.util.ArrayList;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -197,6 +200,17 @@ public class ConnectFourBoard {
 					}
 				}
 				//System.out.println("downLeft: " + downLeftMatches);
+				//check for matching pieces to up and right
+				int upRightMatches = 0;
+				for(int j = i+1; j < gameHeight && lastMoveSlot+(j-i) < gameWidth; j++) {
+					if(pieceStates[lastMoveSlot+(j-i)][j] == lastMoveState) {
+						upRightMatches++;
+					}
+					else {
+						break;
+					}
+				}
+				//System.out.println("upRight: " + upRightMatches);
 				//check for matching pieces to the down and right
 				int downRightMatches = 0;
 				for(int j = i-1; j >= 0 && lastMoveSlot+(i-j) < gameWidth; j--) {
@@ -219,21 +233,10 @@ public class ConnectFourBoard {
 					}
 				}
 				//System.out.println("upLeft: " + upLeftMatches);
-				//check for matching pieces to up and right
-				int upRightMatches = 0;
-				for(int j = i+1; j < gameHeight && lastMoveSlot+(j-i) < gameWidth; j++) {
-					if(pieceStates[lastMoveSlot+(j-i)][j] == lastMoveState) {
-						upRightMatches++;
-					}
-					else {
-						break;
-					}
-				}
-				//System.out.println("upRight: " + upRightMatches);
 				//check if the highest pieces matches ends the game
 				if(sideMatches+1 >= winningSize || belowMatches+1 >= winningSize ||
-						downLeftMatches+1 >= winningSize || downRightMatches+1 >= winningSize ||
-						upLeftMatches+1 >= winningSize || upRightMatches+1 >= winningSize) {
+						upRightMatches+downLeftMatches+1 >= winningSize ||
+						upLeftMatches+downRightMatches+1 >= winningSize) {
 					if(lastMoveState == PieceState.YELLOW) {
 						return GameState.YELLOW_WON;
 					}
@@ -277,5 +280,170 @@ public class ConnectFourBoard {
 			out += "\n";
 		}
 		return out;
+	}
+	
+	//evaluate who is winning on the board and by how much
+	//Yellow = position, Red = negative
+	public int evaluate() {
+		if(gameState != GameState.NOT_OVER) {
+			switch(gameState) {
+			case YELLOW_WON:
+				return Integer.MAX_VALUE;
+			case RED_WON:
+				return Integer.MIN_VALUE;
+			case TIE:
+				return 0;
+			default:
+				return 0;
+			}
+		}
+		else {
+			ArrayList<Point> visited = new ArrayList<Point>();
+			int score = 0;
+			for(int i = 0; i < gameWidth; i++) {
+				for(int j = 0; j < gameHeight; j++) {
+					int subscore = 0;
+					if(pieceStates[i][j] != PieceState.EMPTY &&
+							!visited.contains(new Point(i, j))) {
+						visited.add(new Point(i, j));
+						PieceState lastMoveState = pieceStates[i][j];
+						//check for matching pieces below
+						int belowMatches = 0;
+						for(int k = j-1; k >= 0; k--) {
+							if(pieceStates[i][k] == lastMoveState) {
+								belowMatches++;
+								visited.add(new Point(i, k));
+							}
+							else {
+								break;
+							}
+						}
+						subscore += Math.pow(belowMatches+1, 2);
+						//System.out.println("below: " + belowMatches);
+						//check for matching pieces to the side
+						boolean openside = false;
+						int sideMatches = 0;
+						for(int k = i-1; k >= 0; k--) {
+							if(pieceStates[k][j] == lastMoveState) {
+								sideMatches++;
+								visited.add(new Point(k, j));
+							}
+							else if(pieceStates[k][j] == PieceState.EMPTY) {
+								openside = true;
+							}
+							else {
+								break;
+							}
+						}
+						for(int k = i+1; k < gameWidth; k++) {
+							if(pieceStates[k][j] == lastMoveState) {
+								sideMatches++;
+								visited.add(new Point(k, j));
+							}
+							else if(pieceStates[k][j] == PieceState.EMPTY) {
+								openside = true;
+							}
+							else {
+								break;
+							}
+						}
+						if(openside) {
+							subscore += Math.pow(sideMatches+1, 2);
+						}
+						//System.out.println("side: " + sideMatches);
+						openside = false;
+						//check for matching pieces down and left
+						int downLeftMatches = 0;
+						for(int k = j-1; k >= 0 && i-(j-k) >= 0; k--) {
+							if(pieceStates[i-(j-k)][k] == lastMoveState) {
+								downLeftMatches++;
+								visited.add(new Point(i-(j-k), k));
+							}
+							else if(pieceStates[i-(j-k)][k] == PieceState.EMPTY) {
+								openside = true;
+							}
+							else {
+								break;
+							}
+						}
+						//System.out.println("downLeft: " + downLeftMatches);
+						//check for matching pieces to up and right
+						int upRightMatches = 0;
+						for(int k = j+1; k < gameHeight && i+(k-j) < gameWidth; k++) {
+							if(pieceStates[i+(k-j)][k] == lastMoveState) {
+								upRightMatches++;
+								visited.add(new Point(i+(k-j), k));
+							}
+							else if(pieceStates[i-(j-k)][k] == PieceState.EMPTY) {
+								openside = true;
+							}
+							else {
+								break;
+							}
+						}
+						if(openside) {
+							subscore += Math.pow(upRightMatches+downLeftMatches+1, 2);
+						}
+						//System.out.println("upRight: " + upRightMatches);
+						//check for matching pieces to the down and right
+						int downRightMatches = 0;
+						openside = false;
+						for(int k = j-1; k >= 0 && i+(j-k) < gameWidth; k--) {
+							if(pieceStates[i+(j-k)][k] == lastMoveState) {
+								downRightMatches++;
+								visited.add(new Point(i+(j-k), k));
+							}
+							else if(pieceStates[i+(j-k)][k] == PieceState.EMPTY) {
+								openside = true;
+							}
+							else {
+								break;
+							}
+						}
+						//System.out.println("downRight: " + downRightMatches);
+						//check for matching pieces up and left
+						int upLeftMatches = 0;
+						for(int k = j+1; k < gameHeight && i-(k-j) >= 0; k++) {
+							if(pieceStates[i-(k-j)][k] == lastMoveState) {
+								upLeftMatches++;
+								visited.add(new Point(i-(k-j), k));
+							}
+							else if(pieceStates[i-(k-j)][k] == PieceState.EMPTY) {
+								openside = true;
+							}
+							else {
+								break;
+							}
+						}
+						if(openside) {
+							subscore += Math.pow(upLeftMatches+downRightMatches+1, 2);
+						}
+						//System.out.println("upLeft: " + upLeftMatches);
+						//check if the highest pieces matches ends the game
+						if(sideMatches+1 >= winningSize || belowMatches+1 >= winningSize ||
+								upRightMatches+downLeftMatches+1 >= winningSize ||
+								upLeftMatches+downRightMatches+1 >= winningSize) {
+							if(lastMoveState == PieceState.YELLOW) {
+								return Integer.MAX_VALUE;
+							}
+							else {
+								return Integer.MIN_VALUE;
+							}
+						}
+						else if(i+1 == gameHeight && boardFull()) {
+							return 0;
+						}
+						if(lastMoveState == PieceState.YELLOW) {
+							score += subscore;
+						}
+						else if(lastMoveState == PieceState.RED) {
+							score -= subscore;
+						}
+						//System.out.println("subscore: " + subscore);
+					}
+				}
+			}
+			return score;
+		}
 	}
 }
